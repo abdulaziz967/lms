@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LMS - Fully Working Cross-Device System</title>
+<title>LMS - Cross-Device Learning System</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
@@ -62,9 +62,9 @@
 
 <script>
 // ============================================
-// CONFIGURATION - REPLACE WITH YOUR APPS SCRIPT URL
+// CONFIGURATION - YOUR APPS SCRIPT URL
 // ============================================
-const API_URL = "https://script.google.com/macros/s/AKfycbydLPPoNpxZvxUmgi6tFycyLo7JoX0bE5X3Vz7jTBCyuUAzNRumt36EQqVxZImOnJQKMQ/exec"; // 👈 PASTE YOUR URL!
+const API_URL = "https://script.google.com/macros/s/AKfycbydLPPoNpxZvxUmgi6tFycyLo7JoX0bE5X3Vz7jTBCyuUAzNRumt36EQqVxZImOnJQKMQ/exec";
 
 // Sample subjects
 const SUBJECTS = [
@@ -89,7 +89,9 @@ const SUBJECTS = [
     questions: [
       { id: 1, text: "Choose the correct sentence:", options: ["He go to school", "He goes to school", "He going to school", "He gone to school"], correct: 1, points: 10 },
       { id: 2, text: "What is the past tense of 'run'?", options: ["Run", "Ran", "Runned", "Running"], correct: 1, points: 10 },
-      { id: 3, text: "Which word is a noun?", options: ["Beautiful", "Quickly", "Happiness", "Run"], correct: 2, points: 10 }
+      { id: 3, text: "Which word is a noun?", options: ["Beautiful", "Quickly", "Happiness", "Run"], correct: 2, points: 10 },
+      { id: 4, text: "What is the antonym of 'expensive'?", options: ["Cheap", "Costly", "Valuable", "Pricey"], correct: 0, points: 10 },
+      { id: 5, text: "Fill in the blank: She ___ to the store yesterday.", options: ["go", "goes", "went", "going"], correct: 2, points: 10 }
     ]
   },
   {
@@ -100,7 +102,9 @@ const SUBJECTS = [
     questions: [
       { id: 1, text: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], correct: 2, points: 10 },
       { id: 2, text: "What is the hardest natural substance?", options: ["Iron", "Gold", "Diamond", "Platinum"], correct: 2, points: 10 },
-      { id: 3, text: "What planet is known as the Red Planet?", options: ["Jupiter", "Mars", "Venus", "Saturn"], correct: 1, points: 10 }
+      { id: 3, text: "What planet is known as the Red Planet?", options: ["Jupiter", "Mars", "Venus", "Saturn"], correct: 1, points: 10 },
+      { id: 4, text: "What gas do plants absorb?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], correct: 2, points: 10 },
+      { id: 5, text: "What is the boiling point of water?", options: ["90°C", "100°C", "110°C", "120°C"], correct: 1, points: 10 }
     ]
   }
 ];
@@ -121,18 +125,24 @@ function showToast(message, isError = false) {
 
 async function apiCall(endpoint, data = null) {
   try {
-    let url = API_URL;
     if (endpoint === 'fetch') {
-      url = `${API_URL}?t=${Date.now()}`;
+      const url = `${API_URL}?t=${Date.now()}`;
       const response = await fetch(url);
-      return await response.json();
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch(e) {
+        console.error("Parse error:", text);
+        return { error: "Invalid response from server" };
+      }
     } else {
       const response = await fetch(API_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      return await response.json();
+      return { success: true };
     }
   } catch (err) {
     console.error('API Error:', err);
@@ -249,7 +259,7 @@ function showAdminLogin() {
     </div>
     <div class="input-group">
       <label>Admin Password</label>
-      <input type="password" id="adminPassword" placeholder="admin123">
+      <input type="password" id="adminPassword" placeholder="admin111">
     </div>
     <button class="btn btn-primary" onclick="adminLogin()">Admin Login</button>
     <div class="switch-link">
@@ -319,7 +329,7 @@ async function adminLogin() {
   const admin = users.find(u => u.email === email && u.password === password && u.role === 'admin');
   
   if (!admin) {
-    showToast('Invalid admin credentials. Use admin@lms.com / admin', true);
+    showToast('Invalid admin credentials. Use admin@lms.com / admin111', true);
     return;
   }
   
@@ -357,7 +367,6 @@ async function renderStudentDashboard() {
   }
   
   const totalPoints = currentUser.points || 0;
-  const testsCompleted = 0; // Simplified for now
   
   document.getElementById('app').innerHTML = `
     <div class="container">
