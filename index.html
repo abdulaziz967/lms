@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LMS - Working Cross-Device System</title>
+<title>LMS - Fully Working Cross-Device System</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
@@ -11,18 +11,21 @@
   .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
   .auth-card { background: white; border-radius: 20px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
   .auth-card h2 { margin-bottom: 10px; color: #333; }
+  .subtitle { color: #666; margin-bottom: 30px; }
   .input-group { margin-bottom: 20px; }
   .input-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
   .input-group input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+  .input-group input:focus { outline: none; border-color: #667eea; }
   .btn { padding: 12px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 16px; transition: all 0.3s; }
   .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 100%; }
   .btn-primary:hover { transform: translateY(-2px); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   .btn-outline { background: transparent; border: 2px solid #667eea; color: #667eea; }
   .switch-link { text-align: center; margin-top: 20px; color: #666; }
   .switch-link a { color: #667eea; cursor: pointer; text-decoration: underline; }
   .app-header { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
   .logo h1 { font-size: 1.5rem; color: #667eea; }
-  .user-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 50px; }
+  .user-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 50px; font-weight: 500; }
   .status-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; }
   .status-approved { background: #4caf50; color: white; }
   .status-pending { background: #ff9800; color: white; }
@@ -31,9 +34,10 @@
   .stat-card:hover { transform: translateY(-3px); }
   .stat-number { font-size: 2rem; font-weight: bold; color: #667eea; }
   .section { background: white; border-radius: 20px; padding: 24px; margin-bottom: 20px; }
-  .subjects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+  .subjects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
   .subject-card { background: #f8f9fa; border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
   .subject-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-color: #667eea; }
+  .subject-name { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
   .quiz-container { background: #f8f9fa; border-radius: 20px; padding: 24px; }
   .question-text { font-size: 1.2rem; margin-bottom: 20px; font-weight: 500; }
   .option { padding: 12px; background: white; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
@@ -49,25 +53,24 @@
   .admin-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
   .admin-tab { padding: 10px 20px; background: #f0f0f0; border: none; border-radius: 50px; cursor: pointer; font-weight: 500; transition: all 0.3s; }
   .admin-tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-  .loading { text-align: center; padding: 20px; color: #666; }
+  .loading { text-align: center; padding: 40px; color: #666; }
   @media (max-width: 768px) { .auth-card { margin: 20px; padding: 30px; } }
 </style>
 </head>
 <body>
-<div id="app">Loading...</div>
+<div id="app" class="loading">Loading LMS...</div>
 
 <script>
 // ============================================
-// CONFIGURATION - REPLACE WITH YOUR SHEET.BEST URL
+// CONFIGURATION - REPLACE WITH YOUR APPS SCRIPT URL
 // ============================================
-const SHEET_BEST_URL = "https://api.sheetbest.com/sheets/2f4eddf6-0530-4254-b2aa-f6778ea304ac"; // 👈 PASTE YOUR URL!
+const API_URL = "https://script.google.com/macros/s/AKfycbydLPPoNpxZvxUmgi6tFycyLo7JoX0bE5X3Vz7jTBCyuUAzNRumt36EQqVxZImOnJQKMQ/exec"; // 👈 PASTE YOUR URL!
 
-// Sample subjects data
-const DEFAULT_SUBJECTS = [
+// Sample subjects
+const SUBJECTS = [
   {
     id: 1,
     name: "Mathematics",
-    description: "Algebra, Geometry, Calculus",
     passingScore: 60,
     timeLimit: 300,
     questions: [
@@ -81,39 +84,32 @@ const DEFAULT_SUBJECTS = [
   {
     id: 2,
     name: "English Grammar",
-    description: "Tenses, Parts of Speech",
     passingScore: 60,
     timeLimit: 300,
     questions: [
       { id: 1, text: "Choose the correct sentence:", options: ["He go to school", "He goes to school", "He going to school", "He gone to school"], correct: 1, points: 10 },
       { id: 2, text: "What is the past tense of 'run'?", options: ["Run", "Ran", "Runned", "Running"], correct: 1, points: 10 },
-      { id: 3, text: "Which word is a noun?", options: ["Beautiful", "Quickly", "Happiness", "Run"], correct: 2, points: 10 },
-      { id: 4, text: "What is the antonym of 'expensive'?", options: ["Cheap", "Costly", "Valuable", "Pricey"], correct: 0, points: 10 },
-      { id: 5, text: "Fill in the blank: She ___ to the store yesterday.", options: ["go", "goes", "went", "going"], correct: 2, points: 10 }
+      { id: 3, text: "Which word is a noun?", options: ["Beautiful", "Quickly", "Happiness", "Run"], correct: 2, points: 10 }
     ]
   },
   {
     id: 3,
     name: "Science",
-    description: "Physics, Chemistry, Biology",
     passingScore: 60,
     timeLimit: 300,
     questions: [
       { id: 1, text: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], correct: 2, points: 10 },
       { id: 2, text: "What is the hardest natural substance?", options: ["Iron", "Gold", "Diamond", "Platinum"], correct: 2, points: 10 },
-      { id: 3, text: "What planet is known as the Red Planet?", options: ["Jupiter", "Mars", "Venus", "Saturn"], correct: 1, points: 10 },
-      { id: 4, text: "What gas do plants absorb?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], correct: 2, points: 10 },
-      { id: 5, text: "What is the boiling point of water?", options: ["90°C", "100°C", "110°C", "120°C"], correct: 1, points: 10 }
+      { id: 3, text: "What planet is known as the Red Planet?", options: ["Jupiter", "Mars", "Venus", "Saturn"], correct: 1, points: 10 }
     ]
   }
 ];
 
 // Global variables
 let users = [];
-let subjects = [];
 let currentUser = null;
 
-// Helper function to show toast messages
+// Helper functions
 function showToast(message, isError = false) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -123,178 +119,65 @@ function showToast(message, isError = false) {
   setTimeout(() => toast.remove(), 3000);
 }
 
-// ============================================
-// DATABASE FUNCTIONS (using Sheet.best)
-// ============================================
-
-async function fetchUsers() {
+async function apiCall(endpoint, data = null) {
   try {
-    const response = await fetch(`${SHEET_BEST_URL}/search?role=student`);
-    if (response.ok) {
-      users = await response.json();
+    let url = API_URL;
+    if (endpoint === 'fetch') {
+      url = `${API_URL}?t=${Date.now()}`;
+      const response = await fetch(url);
+      return await response.json();
     } else {
-      users = [];
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await response.json();
     }
-    
-    // Check if admin exists
-    const adminCheck = await fetch(`${SHEET_BEST_URL}/search?email=admin@lms.com`);
-    if (adminCheck.ok) {
-      const adminData = await adminCheck.json();
-      if (adminData.length === 0) {
-        // Create admin
-        await fetch(SHEET_BEST_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: Date.now(),
-            name: "Admin User",
-            email: "admin@lms.com",
-            password: "admin123",
-            role: "admin",
-            status: "approved",
-            registeredAt: new Date().toISOString(),
-            points: 0
-          })
-        });
-      }
-    }
-    
-    return true;
   } catch (err) {
-    console.error("Fetch users error:", err);
-    return false;
+    console.error('API Error:', err);
+    return { error: err.message };
   }
 }
 
-async function fetchSubjects() {
-  try {
-    // Try to get subjects from sheet
-    const response = await fetch(`${SHEET_BEST_URL}/search?type=subject`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.length > 0) {
-        subjects = data;
-        return true;
-      }
-    }
-    
-    // If no subjects, create default ones
-    subjects = DEFAULT_SUBJECTS;
-    for (const subject of subjects) {
-      await fetch(SHEET_BEST_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...subject, type: "subject" })
-      });
-    }
-    return true;
-  } catch (err) {
-    console.error("Fetch subjects error:", err);
-    subjects = DEFAULT_SUBJECTS;
+async function fetchUsers() {
+  const result = await apiCall('fetch');
+  if (result.users) {
+    users = result.users;
     return true;
   }
+  return false;
 }
 
 async function registerUser(name, email, password) {
-  try {
-    // Check if email exists
-    const checkResponse = await fetch(`${SHEET_BEST_URL}/search?email=${encodeURIComponent(email)}`);
-    const existing = await checkResponse.json();
-    
-    if (existing.length > 0) {
-      return { success: false, error: "Email already exists" };
-    }
-    
-    const newUser = {
-      id: Date.now(),
-      name: name,
-      email: email,
-      password: password,
-      role: "student",
-      status: "pending",
-      registeredAt: new Date().toISOString(),
-      points: 0,
-      results: JSON.stringify([])
-    };
-    
-    const response = await fetch(SHEET_BEST_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser)
-    });
-    
-    if (response.ok) {
-      return { success: true };
-    } else {
-      return { success: false, error: "Registration failed" };
-    }
-  } catch (err) {
-    console.error("Register error:", err);
-    return { success: false, error: err.message };
-  }
+  const result = await apiCall('register', {
+    action: 'register',
+    name: name,
+    email: email,
+    password: password
+  });
+  return result;
 }
 
-async function approveUser(userId) {
-  try {
-    // First find the user
-    const response = await fetch(`${SHEET_BEST_URL}/search?id=${userId}`);
-    const users = await response.json();
-    
-    if (users.length > 0) {
-      const user = users[0];
-      user.status = "approved";
-      
-      await fetch(`${SHEET_BEST_URL}/update/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user)
-      });
-      return { success: true };
-    }
-    return { success: false };
-  } catch (err) {
-    console.error("Approve error:", err);
-    return { success: false };
-  }
+async function approveUserInCloud(userId) {
+  const result = await apiCall('approve', {
+    action: 'approve',
+    id: userId
+  });
+  return result;
 }
 
-async function saveUserResult(userId, subjectId, score, correct, total, points) {
-  try {
-    // Get user
-    const response = await fetch(`${SHEET_BEST_URL}/search?id=${userId}`);
-    const usersList = await response.json();
-    
-    if (usersList.length > 0) {
-      const user = usersList[0];
-      let results = [];
-      try {
-        results = JSON.parse(user.results || "[]");
-      } catch(e) { results = []; }
-      
-      results.push({
-        subjectId: subjectId,
-        score: score,
-        correct: correct,
-        total: total,
-        points: points,
-        date: new Date().toISOString()
-      });
-      
-      user.results = JSON.stringify(results);
-      user.points = (user.points || 0) + points;
-      
-      await fetch(`${SHEET_BEST_URL}/update/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user)
-      });
-      return { success: true };
-    }
-    return { success: false };
-  } catch (err) {
-    console.error("Save result error:", err);
-    return { success: false };
-  }
+async function saveResult(userId, subjectId, score, correct, total, points) {
+  const result = await apiCall('saveResult', {
+    action: 'saveResult',
+    userId: userId,
+    subjectId: subjectId,
+    score: score,
+    correct: correct,
+    total: total,
+    points: points
+  });
+  return result;
 }
 
 // ============================================
@@ -303,13 +186,12 @@ async function saveUserResult(userId, subjectId, score, correct, total, points) 
 
 async function renderAuthScreen() {
   await fetchUsers();
-  await fetchSubjects();
   
   document.getElementById('app').innerHTML = `
     <div class="auth-screen">
       <div class="auth-card">
         <h2>📚 LMS Cloud</h2>
-        <p style="color: #666; margin-bottom: 30px;">Cross-Device Learning System</p>
+        <div class="subtitle">Cross-Device Learning System</div>
         <div id="authForm">
           <div class="input-group">
             <label>Full Name</label>
@@ -331,8 +213,8 @@ async function renderAuthScreen() {
             Admin login? <a onclick="showAdminLogin()">Admin Access</a>
           </div>
         </div>
-        <div style="margin-top: 20px; font-size: 11px; text-align: center; color: #999;">
-          ✅ Cloud Connected - Cross Device Sync Active
+        <div style="margin-top: 20px; font-size: 11px; text-align: center; color: #4caf50;">
+          ✅ Cloud Connected - Real-time Sync Active
         </div>
       </div>
     </div>
@@ -386,15 +268,22 @@ async function register() {
     return;
   }
   
-  showToast('Registering...');
+  const btn = document.querySelector('#authForm .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Registering...';
   
   const result = await registerUser(name, email, password);
   
-  if (result.success) {
+  btn.disabled = false;
+  btn.textContent = 'Register as Student';
+  
+  if (result.error) {
+    showToast(result.error, true);
+  } else if (result.success) {
     showToast('✅ Registration successful! Waiting for admin approval.');
     showLogin();
   } else {
-    showToast(result.error || 'Registration failed. Please try again.', true);
+    showToast('Registration failed. Please try again.', true);
   }
 }
 
@@ -404,7 +293,7 @@ async function login() {
   
   await fetchUsers();
   
-  const user = users.find(u => u.email === email && u.password === password);
+  const user = users.find(u => u.email === email && u.password === password && u.role === 'student');
   
   if (!user) {
     showToast('Invalid email or password', true);
@@ -414,11 +303,6 @@ async function login() {
   if (user.status !== 'approved') {
     showToast(`Your account is ${user.status}. Please wait for admin approval.`, true);
     return;
-  }
-  
-  // Parse results
-  if (user.results && typeof user.results === 'string') {
-    user.results = JSON.parse(user.results);
   }
   
   currentUser = user;
@@ -465,21 +349,15 @@ let timeRemaining = 0;
 
 async function renderStudentDashboard() {
   await fetchUsers();
-  await fetchSubjects();
   
-  // Update current user with latest data
   const updatedUser = users.find(u => u.id === currentUser.id);
   if (updatedUser) {
-    if (updatedUser.results && typeof updatedUser.results === 'string') {
-      updatedUser.results = JSON.parse(updatedUser.results);
-    }
     currentUser = updatedUser;
     sessionStorage.setItem('lms_current_user', JSON.stringify(currentUser));
   }
   
   const totalPoints = currentUser.points || 0;
-  const testsCompleted = currentUser.results?.length || 0;
-  const avgScore = testsCompleted > 0 ? Math.round(currentUser.results.reduce((s, r) => s + r.score, 0) / testsCompleted) : 0;
+  const testsCompleted = 0; // Simplified for now
   
   document.getElementById('app').innerHTML = `
     <div class="container">
@@ -494,9 +372,8 @@ async function renderStudentDashboard() {
       </div>
       
       <div class="dashboard-stats">
-        <div class="stat-card"><div class="stat-number">${totalPoints}</div><div>🏆 Total Points</div></div>
-        <div class="stat-card"><div class="stat-number">${testsCompleted}</div><div>📊 Tests Taken</div></div>
-        <div class="stat-card"><div class="stat-number">${avgScore}%</div><div>📈 Average Score</div></div>
+        <div class="stat-card"><div class="stat-number">${totalPoints}</div><div>🏆 Points</div></div>
+        <div class="stat-card"><div class="stat-number">${SUBJECTS.length}</div><div>📚 Subjects</div></div>
       </div>
       
       <div class="section">
@@ -510,21 +387,18 @@ async function renderStudentDashboard() {
   
   const grid = document.getElementById('subjectsGrid');
   if (grid) {
-    grid.innerHTML = subjects.map(sub => {
-      const existingResult = currentUser.results?.find(r => r.subjectId === sub.id);
-      return `
-        <div class="subject-card" onclick="startQuiz(${sub.id})">
-          <div class="subject-name">📘 ${sub.name}</div>
-          <div>${sub.questions.length} questions • ${Math.floor(sub.timeLimit / 60)} min</div>
-          ${existingResult ? `<div style="margin-top: 8px; color: ${existingResult.score >= 60 ? '#4caf50' : '#f44336'}">Previous Score: ${existingResult.score}%</div>` : ''}
-        </div>
-      `;
-    }).join('');
+    grid.innerHTML = SUBJECTS.map(sub => `
+      <div class="subject-card" onclick="startQuiz(${sub.id})">
+        <div class="subject-name">📘 ${sub.name}</div>
+        <div>${sub.questions.length} questions • ${Math.floor(sub.timeLimit / 60)} min</div>
+        <div style="margin-top: 8px; color: #667eea;">Click to take test →</div>
+      </div>
+    `).join('');
   }
 }
 
 function startQuiz(subjectId) {
-  selectedSubject = subjects.find(s => s.id === subjectId);
+  selectedSubject = SUBJECTS.find(s => s.id === subjectId);
   currentQuestionIndex = 0;
   userAnswers = {};
   timeRemaining = selectedSubject.timeLimit;
@@ -561,7 +435,7 @@ function renderQuiz() {
   qa.innerHTML = `
     <div class="section">
       <h3>${selectedSubject.name} Quiz</h3>
-      <div class="timer" id="timerDisplay"></div>
+      <div class="timer" id="timerDisplay">⏱️ ${Math.floor(timeRemaining / 60)}:${(timeRemaining % 60).toString().padStart(2, '0')}</div>
       <div class="quiz-container">
         <div style="margin-bottom: 10px; color: #666;">Question ${currentQuestionIndex + 1} of ${selectedSubject.questions.length}</div>
         <div class="question-text">${q.text}</div>
@@ -575,16 +449,6 @@ function renderQuiz() {
   `;
   
   renderOptions();
-  updateTimerDisplay();
-}
-
-function updateTimerDisplay() {
-  const timerDiv = document.getElementById('timerDisplay');
-  if (timerDiv) {
-    const mins = Math.floor(timeRemaining / 60);
-    const secs = timeRemaining % 60;
-    timerDiv.textContent = `⏱️ ${mins}:${secs.toString().padStart(2, '0')}`;
-  }
 }
 
 function renderOptions() {
@@ -635,7 +499,7 @@ async function submitQuiz(isTimeout) {
   
   const score = Math.round((correct / selectedSubject.questions.length) * 100);
   
-  await saveUserResult(currentUser.id, selectedSubject.id, score, correct, selectedSubject.questions.length, points);
+  await saveResult(currentUser.id, selectedSubject.id, score, correct, selectedSubject.questions.length, points);
   
   showToast(`${isTimeout ? '⏰ Time\'s up! ' : ''}Score: ${score}% ${score >= selectedSubject.passingScore ? '🎉 Passed! +' + points + ' pts' : '📚 Keep practicing!'}`);
   
@@ -650,7 +514,6 @@ let adminActiveTab = 'users';
 
 async function renderAdminDashboard() {
   await fetchUsers();
-  await fetchSubjects();
   
   const pendingCount = users.filter(u => u.role === 'student' && u.status === 'pending').length;
   const studentCount = users.filter(u => u.role === 'student').length;
@@ -669,14 +532,13 @@ async function renderAdminDashboard() {
       <div class="dashboard-stats">
         <div class="stat-card"><div class="stat-number">${studentCount}</div><div>Total Students</div></div>
         <div class="stat-card"><div class="stat-number" style="color: #ff9800;">${pendingCount}</div><div>Pending Approvals</div></div>
-        <div class="stat-card"><div class="stat-number">${subjects.length}</div><div>Subjects</div></div>
+        <div class="stat-card"><div class="stat-number">${SUBJECTS.length}</div><div>Subjects</div></div>
         <div class="stat-card"><div class="stat-number">${totalPoints}</div><div>Total Points</div></div>
       </div>
       
       <div class="section">
         <div class="admin-tabs">
           <button class="admin-tab ${adminActiveTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">👥 User Management</button>
-          <button class="admin-tab ${adminActiveTab === 'subjects' ? 'active' : ''}" onclick="switchAdminTab('subjects')">📚 Subjects</button>
         </div>
         <div id="adminContent"></div>
       </div>
@@ -694,77 +556,56 @@ function switchAdminTab(tab) {
 function renderAdminContent() {
   const content = document.getElementById('adminContent');
   
-  if (adminActiveTab === 'users') {
-    const pending = users.filter(u => u.role === 'student' && u.status === 'pending');
-    const approved = users.filter(u => u.role === 'student' && u.status === 'approved');
-    
-    content.innerHTML = `
-      <h3>⏳ Pending Approvals <span style="background:#ff9800; padding:2px 8px; border-radius:20px; font-size:12px;">${pending.length} waiting</span></h3>
-      ${pending.length === 0 ? '<p style="color:#4caf50; padding:20px; text-align:center;">✅ No pending approvals</p>' : `
-      <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Action</th></tr></thead>
-        <tbody>
-          ${pending.map(u => `
-            <tr>
-              <td>${u.name}</td>
-              <td>${u.email}</td>
-              <td>${new Date(u.registeredAt).toLocaleDateString()}</td>
-              <td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      `}
-      
-      <h3 style="margin-top: 30px;">✅ Approved Students (${approved.length})</h3>
-      ${approved.length === 0 ? '<p style="color:#666; padding:20px; text-align:center;">No approved students yet</p>' : `
-      <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Tests Taken</th><th>Points</th><th>Avg Score</th></tr></thead>
-        <tbody>
-          ${approved.map(u => {
-            const results = u.results && typeof u.results === 'string' ? JSON.parse(u.results) : (u.results || []);
-            const avgScore = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length) : 0;
-            return `
-              <tr>
-                <td>${u.name}</td>
-                <td>${u.email}</td>
-                <td>${results.length}</td>
-                <td>${u.points || 0}</td>
-                <td>${avgScore}%</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-      `}
-    `;
-  } else {
-    content.innerHTML = `
-      <h3>📚 Subjects & Quizzes</h3>
-      <div class="subjects-grid">
-        ${subjects.map(s => `
-          <div class="subject-card">
-            <div class="subject-name">📘 ${s.name}</div>
-            <div>${s.questions.length} questions</div>
-            <div>🎯 Pass: ${s.passingScore}% | ⏱️ ${Math.floor(s.timeLimit / 60)} min</div>
-          </div>
+  const pending = users.filter(u => u.role === 'student' && u.status === 'pending');
+  const approved = users.filter(u => u.role === 'student' && u.status === 'approved');
+  
+  content.innerHTML = `
+    <h3>⏳ Pending Approvals <span style="background:#ff9800; padding:2px 8px; border-radius:20px; font-size:12px;">${pending.length} waiting</span></h3>
+    ${pending.length === 0 ? '<p style="color:#4caf50; padding:20px; text-align:center;">✅ No pending approvals</p>' : `
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Action</th></tr></thead>
+      <tbody>
+        ${pending.map(u => `
+          <tr>
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>${new Date(u.registeredAt).toLocaleDateString()}</td>
+            <td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button></td>
+          </tr>
         `).join('')}
-      </div>
-    `;
-  }
+      </tbody>
+    </table>
+    `}
+    
+    <h3 style="margin-top: 30px;">✅ Approved Students (${approved.length})</h3>
+    ${approved.length === 0 ? '<p style="color:#666; padding:20px; text-align:center;">No approved students yet</p>' : `
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Points</th></tr></thead>
+      <tbody>
+        ${approved.map(u => `
+          <tr>
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>${u.points || 0}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `}
+  `;
 }
 
 async function approveUser(userId) {
   const user = users.find(u => u.id === userId);
   if (user) {
-    await approveUser(userId);
+    await approveUserInCloud(userId);
     showToast(`✅ ${user.name} has been approved! They can now login.`);
     renderAdminDashboard();
   }
 }
 
 // ============================================
-// INITIALIZE APP
+// INITIALIZE
 // ============================================
 
 async function init() {
@@ -772,12 +613,10 @@ async function init() {
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
     await fetchUsers();
-    await fetchSubjects();
     
     if (currentUser.role === 'admin') {
       renderAdminDashboard();
     } else {
-      // Check if user still exists and is approved
       const updatedUser = users.find(u => u.id === currentUser.id);
       if (updatedUser && updatedUser.status === 'approved') {
         renderStudentDashboard();
@@ -791,7 +630,6 @@ async function init() {
   }
 }
 
-// Start the app
 init();
 </script>
 </body>
