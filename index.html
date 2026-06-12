@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LMS - Google Sheets Cloud Edition | Cross-Device Learning</title>
+<title>LMS Cloud - Cross Device Learning System</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,6 +20,7 @@
   .btn-primary:hover { transform: translateY(-2px); }
   .btn-outline { background: transparent; border: 2px solid #667eea; color: #667eea; }
   .btn-secondary { background: #48dbfb; color: white; }
+  .btn-danger { background: #f44336; color: white; }
   .switch-link { text-align: center; margin-top: 24px; color: #666; }
   .switch-link a { color: #667eea; text-decoration: none; font-weight: 600; cursor: pointer; }
   .app-header { background: white; border-radius: 24px; padding: 20px 32px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
@@ -29,7 +30,6 @@
   .status-badge { padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; }
   .status-approved { background: #4caf50; color: white; }
   .status-pending { background: #ff9800; color: white; }
-  .status-expired { background: #9e9e9e; color: white; }
   .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
   .stat-card { background: white; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.3s; }
   .stat-card:hover { transform: translateY(-4px); }
@@ -60,7 +60,6 @@
   .cloud-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
   .cloud-online { background: #4caf50; box-shadow: 0 0 5px #4caf50; }
   .cloud-offline { background: #f44336; }
-  .leaderboard-entry { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #e0e0e0; }
   @media (max-width: 768px) { .auth-card { padding: 32px; margin: 20px; } .section { padding: 20px; } }
 </style>
 </head>
@@ -69,181 +68,98 @@
 
 <script>
 // ============================================
-// GOOGLE SHEETS BACKEND CONFIGURATION
+// CONFIGURATION - REPLACE WITH YOUR GOOGLE SCRIPT URL
 // ============================================
-// 
-// SETUP INSTRUCTIONS (15 minutes):
-// 
-// 1. Create a new Google Sheet
-// 2. Go to Extensions → Apps Script
-// 3. Delete default code and paste the script from below
-// 4. Click Deploy → New Deployment → Web App
-// 5. Execute as "Me", Access "Anyone"
-// 6. Copy the Web App URL
-// 7. Replace the API_URL below with your URL
-//
-// ============================================
+const API_URL = "https://script.google.com/macros/s/AKfycbypsktwUZ7QF-lTIUMepYC7wfBJL3xd34P_EzD5VpXU8khAdzaYAVkUoAxa5Gf4L5ElwA/exec"; // 👈 PASTE YOUR URL HERE!
 
-// TODO: Replace with your Google Sheets Web App URL
-const API_URL = "https://script.google.com/macros/s/AKfycbyL6CRZv8HdH8fewFyjC7gC9drxyl_otATs4z1VH3D_voXbh2jozRNQaZ_7BZimtZ65XA/exec";
-// For DEMO mode (when no API is configured), data stays in localStorage
-// Set DEMO_MODE = true to test without Google Sheets
-const DEMO_MODE = false; // Set to false when you have your API_URL ready
-
-// Local fallback storage
-let users = JSON.parse(localStorage.getItem('lms_users_cloud') || '[]');
-let subjects = JSON.parse(localStorage.getItem('lms_subjects_cloud') || '[]');
-let currentUser = JSON.parse(sessionStorage.getItem('lms_current_user_cloud') || 'null');
-
-// Sample Subjects
-const sampleSubjects = [
-  { id: 1, name: "Mathematics", passingScore: 60, timeLimit: 300, questions: [
-    { id: 1, text: "What is 15 × 8?", options: ["100", "110", "120", "130"], correct: 2, points: 10 },
-    { id: 2, text: "What is the square root of 144?", options: ["10", "11", "12", "13"], correct: 2, points: 10 },
-    { id: 3, text: "Solve: 45 + 37 = ?", options: ["72", "82", "92", "102"], correct: 1, points: 10 },
-    { id: 4, text: "What is 25% of 200?", options: ["25", "50", "75", "100"], correct: 1, points: 10 },
-    { id: 5, text: "If x = 5, what is 3x + 7?", options: ["18", "20", "22", "24"], correct: 2, points: 10 }
-  ]},
-  { id: 2, name: "English Grammar", passingScore: 60, timeLimit: 300, questions: [
-    { id: 1, text: "Choose the correct sentence:", options: ["He go to school", "He goes to school", "He going to school", "He gone to school"], correct: 1, points: 10 },
-    { id: 2, text: "What is the past tense of 'run'?", options: ["Run", "Ran", "Runned", "Running"], correct: 1, points: 10 },
-    { id: 3, text: "Which word is a noun?", options: ["Beautiful", "Quickly", "Happiness", "Run"], correct: 2, points: 10 },
-    { id: 4, text: "What is the antonym of 'expensive'?", options: ["Cheap", "Costly", "Valuable", "Pricey"], correct: 0, points: 10 },
-    { id: 5, text: "Fill in the blank: She ___ to the store yesterday.", options: ["go", "goes", "went", "going"], correct: 2, points: 10 }
-  ]},
-  { id: 3, name: "Science", passingScore: 60, timeLimit: 300, questions: [
-    { id: 1, text: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], correct: 2, points: 10 },
-    { id: 2, text: "What is the hardest natural substance?", options: ["Iron", "Gold", "Diamond", "Platinum"], correct: 2, points: 10 },
-    { id: 3, text: "What planet is known as the Red Planet?", options: ["Jupiter", "Mars", "Venus", "Saturn"], correct: 1, points: 10 },
-    { id: 4, text: "What gas do plants absorb?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], correct: 2, points: 10 },
-    { id: 5, text: "What is the boiling point of water?", options: ["90°C", "100°C", "110°C", "120°C"], correct: 1, points: 10 }
-  ]}
-];
-
-if (subjects.length === 0) {
-  subjects = sampleSubjects;
-  localStorage.setItem('lms_subjects_cloud', JSON.stringify(subjects));
-}
-
-// Admin user
-if (!users.find(u => u.role === 'admin')) {
-  users.push({
-    id: Date.now(),
-    name: "Admin User",
-    email: "admin@lms.com",
-    password: "admin123",
-    role: "admin",
-    status: "approved",
-    registeredAt: new Date().toISOString()
-  });
-  localStorage.setItem('lms_users_cloud', JSON.stringify(users));
-}
+let currentUser = null;
+let users = [];
+let subjects = [];
+let allResults = [];
 
 // ============================================
-// CLOUD SYNC FUNCTIONS
+// CLOUD API FUNCTIONS
 // ============================================
 
-let syncStatus = 'online';
-let lastSyncTime = null;
-
-async function syncToCloud() {
-  if (DEMO_MODE) {
-    // In demo mode, just use localStorage
-    return true;
-  }
-  
+async function fetchFromCloud() {
   try {
-    const response = await fetch(API_URL + '?action=sync', {
+    const response = await fetch(`${API_URL}?action=fetch`);
+    const data = await response.json();
+    users = data.users || [];
+    subjects = data.subjects || [];
+    allResults = data.results || [];
+    
+    // Add results to users
+    users.forEach(user => {
+      user.results = allResults.filter(r => r.userId == user.id);
+      user.points = user.results.reduce((sum, r) => sum + (r.points || 0), 0);
+    });
+    
+    // Ensure admin exists
+    if (!users.find(u => u.role === 'admin')) {
+      users.push({
+        id: Date.now(),
+        name: "Admin User",
+        email: "admin@lms.com",
+        password: "admin123",
+        role: "admin",
+        status: "approved",
+        registeredAt: new Date().toISOString()
+      });
+      await updateUserInCloud(users[users.length - 1]);
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Cloud fetch error:", err);
+    showToast("⚠️ Using local data. Cloud sync may be offline.", true);
+    return false;
+  }
+}
+
+async function registerInCloud(name, email, password) {
+  try {
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: users, subjects: subjects, timestamp: Date.now() })
+      body: JSON.stringify({ action: "register", name, email, password })
     });
-    if (response.ok) {
-      syncStatus = 'online';
-      lastSyncTime = new Date();
-      return true;
-    }
+    const data = await response.json();
+    return data.success;
   } catch (err) {
-    syncStatus = 'offline';
-    console.warn('Cloud sync failed, using local data');
+    console.error("Registration error:", err);
+    return false;
   }
-  return false;
 }
 
-async function syncFromCloud() {
-  if (DEMO_MODE) return false;
-  
+async function updateUserInCloud(user) {
   try {
-    const response = await fetch(API_URL + '?action=fetch');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.users) {
-        // Merge cloud data with local (cloud takes precedence)
-        const cloudUsers = data.users;
-        const localUserIds = new Set(users.map(u => u.id));
-        for (const cloudUser of cloudUsers) {
-          if (!localUserIds.has(cloudUser.id)) {
-            users.push(cloudUser);
-          } else {
-            const index = users.findIndex(u => u.id === cloudUser.id);
-            if (index !== -1) users[index] = cloudUser;
-          }
-        }
-        saveUsers();
-      }
-      if (data.subjects) {
-        subjects = data.subjects;
-        saveSubjects();
-      }
-      syncStatus = 'online';
-      return true;
-    }
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: "updateUser", ...user })
+    });
+    const data = await response.json();
+    return data.success;
   } catch (err) {
-    syncStatus = 'offline';
-  }
-  return false;
-}
-
-// Auto-sync every 30 seconds for admin
-let syncInterval = null;
-
-function startAutoSync() {
-  if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(async () => {
-    if (currentUser?.role === 'admin') {
-      const oldPendingCount = users.filter(u => u.status === 'pending').length;
-      await syncFromCloud();
-      const newPendingCount = users.filter(u => u.status === 'pending').length;
-      
-      if (newPendingCount > oldPendingCount && Notification.permission === 'granted') {
-        new Notification('📢 New Student Registration!', {
-          body: `${newPendingCount - oldPendingCount} new student(s) waiting for approval.`,
-          icon: 'https://img.icons8.com/color/48/approval.png'
-        });
-      }
-      if (adminActiveTab === 'users') renderAdminContent();
-      showSyncStatus();
-    }
-  }, 30000);
-}
-
-function showSyncStatus() {
-  const statusEl = document.getElementById('cloudSyncStatus');
-  if (statusEl) {
-    statusEl.innerHTML = `<span class="cloud-status ${syncStatus === 'online' ? 'cloud-online' : 'cloud-offline'}"></span> ${syncStatus === 'online' ? 'Cloud Connected' : 'Offline Mode'}`;
+    console.error("Update error:", err);
+    return false;
   }
 }
 
-// Save with cloud sync
-function saveUsers() {
-  localStorage.setItem('lms_users_cloud', JSON.stringify(users));
-  if (!DEMO_MODE) syncToCloud();
-  checkNewRegistrations();
-}
-
-function saveSubjects() {
-  localStorage.setItem('lms_subjects_cloud', JSON.stringify(subjects));
-  if (!DEMO_MODE) syncToCloud();
+async function saveResultInCloud(userId, subjectId, score, correct, total, points) {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: "saveResult", userId, subjectId, score, correct, total, points })
+    });
+    const data = await response.json();
+    return data.success;
+  } catch (err) {
+    console.error("Save result error:", err);
+    return false;
+  }
 }
 
 function showToast(msg, isError = false) {
@@ -255,53 +171,13 @@ function showToast(msg, isError = false) {
   setTimeout(() => toast.remove(), 3000);
 }
 
-// Check for new registrations
-let lastCheckCount = users.filter(u => u.status === 'pending').length;
-
-function checkNewRegistrations() {
-  const pendingCount = users.filter(u => u.status === 'pending').length;
-  if (pendingCount > lastCheckCount && currentUser?.role === 'admin') {
-    showToast(`🔔 ${pendingCount - lastCheckCount} new student registration(s)! Click 'User Management' to approve.`);
-    if (Notification.permission === 'granted') {
-      new Notification('🎓 New Student Registration!', {
-        body: `${pendingCount - lastCheckCount} student(s) are waiting for approval.`,
-        icon: 'https://img.icons8.com/color/48/approval.png'
-      });
-    }
-  }
-  lastCheckCount = pendingCount;
-}
-
-// Enable notifications
-function enableNotifications() {
-  if ('Notification' in window) {
-    Notification.requestPermission().then(perm => {
-      if (perm === 'granted') showToast('🔔 Notifications enabled! You will be alerted for new registrations.');
-      else showToast('Notifications blocked. Enable in browser settings.');
-    });
-  }
-}
-
-// Session management for students
-function validateSession(user) {
-  if (!user || user.role === 'admin') return true;
-  const session = JSON.parse(localStorage.getItem(`session_${user.id}`) || 'null');
-  if (!session) return true;
-  return true;
-}
-
-function createSession(userId) {
-  if (!userId) return;
-  localStorage.setItem(`session_${userId}`, JSON.stringify({ loginTime: Date.now() }));
-}
-
-function clearSession(userId) { localStorage.removeItem(`session_${userId}`); }
-
 // ============================================
 // AUTH SCREENS
 // ============================================
 
-function renderAuthScreen() {
+async function renderAuthScreen() {
+  await fetchFromCloud();
+  
   document.getElementById('app').innerHTML = `
     <div class="auth-screen"><div class="auth-card">
       <h2>☁️ LMS Cloud</h2>
@@ -315,12 +191,10 @@ function renderAuthScreen() {
         <div class="switch-link">Admin login? <a onclick="showAdminLogin()">Admin Access</a></div>
       </div>
       <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; font-size: 0.75rem; text-align: center; color: #999;">
-        <span id="cloudSyncStatus"><span class="cloud-status ${syncStatus === 'online' ? 'cloud-online' : 'cloud-offline'}"></span> ${syncStatus === 'online' ? 'Cloud Connected' : 'Offline Mode'}</span>
-        <br>📌 Admin sees all registrations instantly across devices
+        <span class="cloud-status cloud-online"></span> Cloud Connected - Cross Device Sync Active
       </div>
     </div></div>
   `;
-  showSyncStatus();
 }
 
 function showLogin() {
@@ -339,51 +213,7 @@ function showAdminLogin() {
     <div class="input-group"><label>Admin Password</label><input type="password" id="adminPassword" placeholder="admin123"></div>
     <button class="btn btn-primary" onclick="adminLogin()">Admin Login</button>
     <div class="switch-link">Student login? <a onclick="showLogin()">Student Login</a></div>
-    <div class="switch-link">Need a Google Sheet? <a onclick="showSetupGuide()">📋 Setup Guide</a></div>
   `;
-}
-
-function showSetupGuide() {
-  const modal = document.createElement('div'); modal.className = 'modal active';
-  modal.innerHTML = `
-    <div class="modal-content">
-      <h3>📋 Google Sheets Setup Guide</h3>
-      <ol style="margin: 16px 0 0 20px; line-height: 1.8;">
-        <li>Create a new <strong>Google Sheet</strong></li>
-        <li>Go to <strong>Extensions → Apps Script</strong></li>
-        <li>Delete default code and paste the script below</li>
-        <li>Click <strong>Deploy → New Deployment → Web App</strong></li>
-        <li>Set "Execute as" to <strong>Me</strong>, "Access" to <strong>Anyone</strong></li>
-        <li>Copy the Web App URL</li>
-        <li>Update <strong>API_URL</strong> in the code and set DEMO_MODE = false</li>
-      </ol>
-      <pre style="background:#f0f0f0; padding:12px; border-radius:8px; margin-top:16px; font-size:11px; overflow-x:auto;">
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const sheet = SpreadsheetApp.getActiveSheet();
-  if(data.users) {
-    sheet.getRange("A1").setValue(JSON.stringify(data.users));
-  }
-  if(data.subjects) {
-    sheet.getRange("B1").setValue(JSON.stringify(data.subjects));
-  }
-  return ContentService.createTextOutput(JSON.stringify({success:true}));
-}
-
-function doGet() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const users = sheet.getRange("A1").getValue();
-  const subjects = sheet.getRange("B1").getValue();
-  return ContentService.createTextOutput(JSON.stringify({
-    users: users ? JSON.parse(users) : [],
-    subjects: subjects ? JSON.parse(subjects) : []
-  })).setMimeType(ContentService.MimeType.JSON);
-}
-      </pre>
-      <button class="btn btn-primary" onclick="closeModal()" style="margin-top: 16px;">Got it!</button>
-    </div>
-  `;
-  document.body.appendChild(modal);
 }
 
 async function register() {
@@ -394,44 +224,28 @@ async function register() {
   if (!name || !email || !password) { showToast('Please fill all fields', true); return; }
   if (users.find(u => u.email === email)) { showToast('Email already exists', true); return; }
   
-  const newUser = {
-    id: Date.now(),
-    name, email, password,
-    role: 'student',
-    status: 'pending',
-    registeredAt: new Date().toISOString(),
-    accessExpiry: null,
-    results: [],
-    points: 0,
-    badges: []
-  };
-  
-  users.push(newUser);
-  saveUsers();
-  
-  // Notify admin via cloud sync
-  if (!DEMO_MODE) await syncToCloud();
-  
-  showToast('✅ Registration successful! Admin will approve you shortly. They will see a notification.');
-  
-  // Check if admin is online and notify
-  showLogin();
+  const success = await registerInCloud(name, email, password);
+  if (success) {
+    await fetchFromCloud();
+    showToast('✅ Registration successful! Admin will approve you shortly.');
+    showLogin();
+  } else {
+    showToast('Registration failed. Please try again.', true);
+  }
 }
 
 async function login() {
   const email = document.getElementById('loginEmail')?.value;
   const password = document.getElementById('loginPassword')?.value;
   
-  // Sync from cloud to get latest approvals
-  await syncFromCloud();
-  
+  await fetchFromCloud();
   const user = users.find(u => u.email === email && u.password === password && u.role === 'student');
+  
   if (!user) { showToast('Invalid credentials', true); return; }
   if (user.status !== 'approved') { showToast(`Account is ${user.status}. Wait for admin approval.`, true); return; }
   
-  createSession(user.id);
   currentUser = user;
-  sessionStorage.setItem('lms_current_user_cloud', JSON.stringify(currentUser));
+  sessionStorage.setItem('lms_current_user', JSON.stringify(currentUser));
   renderStudentDashboard();
 }
 
@@ -439,27 +253,20 @@ async function adminLogin() {
   const email = document.getElementById('adminEmail')?.value;
   const password = document.getElementById('adminPassword')?.value;
   
-  // Sync from cloud to get all registrations
-  await syncFromCloud();
-  
+  await fetchFromCloud();
   const admin = users.find(u => u.email === email && u.password === password && u.role === 'admin');
+  
   if (!admin) { showToast('Invalid admin credentials. Use admin@lms.com / admin123', true); return; }
   
   currentUser = admin;
-  sessionStorage.setItem('lms_current_user_cloud', JSON.stringify(currentUser));
-  startAutoSync();
+  sessionStorage.setItem('lms_current_user', JSON.stringify(currentUser));
   renderAdminDashboard();
   const pendingCount = users.filter(u => u.status === 'pending').length;
   showToast(`👋 Welcome Admin! ${pendingCount} student(s) pending approval.`);
-  if (pendingCount > 0 && Notification.permission === 'granted') {
-    new Notification('📋 Pending Approvals', { body: `${pendingCount} students need your approval.` });
-  }
 }
 
 function logout() {
-  if (currentUser) clearSession(currentUser.id);
-  if (syncInterval) clearInterval(syncInterval);
-  sessionStorage.removeItem('lms_current_user_cloud');
+  sessionStorage.removeItem('lms_current_user');
   currentUser = null;
   renderAuthScreen();
 }
@@ -470,8 +277,9 @@ function logout() {
 
 let selectedSubject = null, currentQuestionIndex = 0, userAnswers = {}, timerInterval = null, timeRemaining = 0;
 
-function renderStudentDashboard() {
-  if (!validateSession(currentUser)) { logout(); return; }
+async function renderStudentDashboard() {
+  await fetchFromCloud();
+  
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="container">
@@ -493,6 +301,7 @@ function renderStudentDashboard() {
       <div id="quizArea" style="display: none;"></div>
     </div>
   `;
+  
   const grid = document.getElementById('subjectsGrid');
   grid.innerHTML = subjects.map(sub => `<div class="subject-card" onclick="startQuiz(${sub.id})"><div class="subject-name">📘 ${sub.name}</div><div class="question-count">${sub.questions.length} questions • ${Math.floor(sub.timeLimit/60)} min</div></div>`).join('');
 }
@@ -537,7 +346,7 @@ function nextQuestion() {
   else { currentQuestionIndex++; renderQuiz(); }
 }
 
-function submitQuiz(isTimeout) {
+async function submitQuiz(isTimeout) {
   if (timerInterval) clearInterval(timerInterval);
   let correct = 0, points = 0;
   selectedSubject.questions.forEach((q, idx) => {
@@ -545,14 +354,15 @@ function submitQuiz(isTimeout) {
   });
   const score = Math.round((correct / selectedSubject.questions.length) * 100);
   const passed = score >= selectedSubject.passingScore;
-  const result = { subjectId: selectedSubject.id, subjectName: selectedSubject.name, score, correct, total: selectedSubject.questions.length, points, passed, date: new Date().toISOString() };
-  if (!currentUser.results) currentUser.results = [];
-  currentUser.results.push(result);
-  currentUser.points = (currentUser.points || 0) + points;
-  const userIndex = users.findIndex(u => u.id === currentUser.id);
-  users[userIndex] = currentUser;
-  saveUsers();
-  sessionStorage.setItem('lms_current_user_cloud', JSON.stringify(currentUser));
+  
+  await saveResultInCloud(currentUser.id, selectedSubject.id, score, correct, selectedSubject.questions.length, points);
+  await fetchFromCloud();
+  
+  // Update current user
+  const updatedUser = users.find(u => u.id === currentUser.id);
+  if (updatedUser) currentUser = updatedUser;
+  sessionStorage.setItem('lms_current_user', JSON.stringify(currentUser));
+  
   showToast(`Score: ${score}% ${passed ? '🎉 Passed! +' + points + ' pts' : '📚 Keep practicing!'}`);
   renderStudentDashboard();
 }
@@ -563,9 +373,12 @@ function submitQuiz(isTimeout) {
 
 let adminActiveTab = 'users';
 
-function renderAdminDashboard() {
+async function renderAdminDashboard() {
+  await fetchFromCloud();
+  
   const app = document.getElementById('app');
   const pendingCount = users.filter(u => u.status === 'pending').length;
+  
   app.innerHTML = `
     <div class="container">
       <div class="app-header">
@@ -573,7 +386,6 @@ function renderAdminDashboard() {
         <div class="user-info">
           <div class="user-badge">Admin: ${currentUser.name}</div>
           <div class="status-badge" style="background:#2196f3;">☁️ Cloud Sync</div>
-          <button class="btn btn-outline" onclick="enableNotifications()">🔔 Notify</button>
           <button class="btn btn-outline" onclick="logout()">Logout</button>
         </div>
       </div>
@@ -587,7 +399,6 @@ function renderAdminDashboard() {
         <div class="admin-tabs">
           <button class="admin-tab ${adminActiveTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">👥 User Management</button>
           <button class="admin-tab ${adminActiveTab === 'subjects' ? 'active' : ''}" onclick="switchAdminTab('subjects')">📚 Subjects</button>
-          <button class="admin-tab ${adminActiveTab === 'cloud' ? 'active' : ''}" onclick="switchAdminTab('cloud')">☁️ Cloud Settings</button>
         </div>
         <div id="adminContent"></div>
       </div>
@@ -604,227 +415,8 @@ function renderAdminContent() {
   if (adminActiveTab === 'users') {
     const pending = users.filter(u => u.role === 'student' && u.status === 'pending');
     const approved = users.filter(u => u.role === 'student' && u.status === 'approved');
+    
     content.innerHTML = `
       <h3>⏳ Pending Approvals <span style="background:#ff9800; padding:2px 8px; border-radius:20px; font-size:12px;">${pending.length} waiting</span></h3>
       <div class="users-table"><table><thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Action</th></tr></thead><tbody>
-        ${pending.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${new Date(u.registeredAt).toLocaleString()}</td><td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button><button class="icon-btn" style="background:#f44336;color:white;" onclick="rejectUser(${u.id})">❌ Reject</button></td></tr>`).join('')}
-        ${pending.length === 0 ? '<tr><td colspan="4" style="text-align:center;">✅ No pending approvals</td></tr>' : ''}
-      </tbody></table></div>
-      <h3 style="margin-top:24px;">✅ Approved Students (${approved.length})</h3>
-      <div class="users-table"><table><thead><tr><th>Name</th><th>Email</th><th>Tests</th><th>Points</th><th>Avg Score</th><th>Action</th></tr></thead><tbody>
-        ${approved.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.results?.length || 0}</td><td>${u.points || 0}</td><td>${Math.round((u.results?.reduce((s,r)=>s+r.score,0) || 0) / (u.results?.length || 1))}%</td><td><button class="icon-btn" style="background:#f44336;color:white;" onclick="deleteUser(${u.id})">Delete</button></td></tr>`).join('')}
-      </tbody></table></div>
-    `;
-  } else if (adminActiveTab === 'subjects') {
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3>📚 Subjects & Quizzes</h3><button class="btn btn-primary" onclick="showAddSubjectModal()">+ Add Subject</button></div>
-      <div class="subjects-grid">${subjects.map(s => `<div class="subject-card"><div class="subject-name">📘 ${s.name}</div><div>${s.questions.length} questions</div><div>🎯 Pass: ${s.passingScore}% | ⏱️ ${Math.floor(s.timeLimit/60)} min</div><div style="margin-top:12px;"><button class="icon-btn" style="background:#667eea;color:white;" onclick="editSubject(${s.id})">Edit</button><button class="icon-btn" style="background:#f44336;color:white;" onclick="deleteSubject(${s.id})">Delete</button></div></div>`).join('')}</div>
-    `;
-  } else if (adminActiveTab === 'cloud') {
-    content.innerHTML = `
-      <h3>☁️ Cloud Sync Settings</h3>
-      <div style="background:#e8f5e9; padding:20px; border-radius:16px; margin-top:16px;">
-        <h4>📡 Current Status</h4>
-        <p><span class="cloud-status ${syncStatus === 'online' ? 'cloud-online' : 'cloud-offline'}"></span> ${syncStatus === 'online' ? 'Connected to Cloud' : 'Offline Mode (using localStorage)'}</p>
-        <p>Last Sync: ${lastSyncTime ? lastSyncTime.toLocaleTimeString() : 'Never'}</p>
-        <button class="btn btn-primary" onclick="manualSync()" style="margin-top:12px;">🔄 Manual Sync Now</button>
-      </div>
-      <div style="background:#fff3e0; padding:20px; border-radius:16px; margin-top:20px;">
-        <h4>🔔 Real-time Notifications</h4>
-        <p>Admin sees pending approvals instantly across all devices!</p>
-        <p>✅ Auto-refresh every 30 seconds</p>
-        <p>✅ Desktop notifications for new registrations</p>
-        <button class="btn btn-outline" onclick="enableNotifications()">🔔 Enable Notifications</button>
-      </div>
-      <div style="background:#e3f2fd; padding:20px; border-radius:16px; margin-top:20px;">
-        <h4>📤 Data Management</h4>
-        <button class="btn btn-secondary" onclick="exportData()">📥 Export All Data (JSON)</button>
-        <button class="btn btn-outline" onclick="importData()">📤 Import Data</button>
-        <button class="btn btn-danger" onclick="resetAllData()" style="background:#f44336; color:white;">⚠️ Reset All Data</button>
-      </div>
-    `;
-  }
-}
-
-async function manualSync() {
-  showToast('Syncing...');
-  await syncFromCloud();
-  await syncToCloud();
-  renderAdminDashboard();
-  showToast('Sync complete!');
-}
-
-function exportData() {
-  const data = { users, subjects, exportDate: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lms_cloud_backup_${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Data exported!');
-}
-
-function importData() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'application/json';
-  input.onchange = e => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (data.users) { users = data.users; saveUsers(); }
-        if (data.subjects) { subjects = data.subjects; saveSubjects(); }
-        showToast('Data imported successfully!');
-        renderAdminDashboard();
-      } catch (err) { showToast('Invalid file', true); }
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-function resetAllData() {
-  if (confirm('⚠️ WARNING: This will delete ALL users, subjects, and progress. This cannot be undone!')) {
-    if (confirm('Are you ABSOLUTELY sure?')) {
-      users = [{
-        id: Date.now(),
-        name: "Admin User",
-        email: "admin@lms.com",
-        password: "admin123",
-        role: "admin",
-        status: "approved",
-        registeredAt: new Date().toISOString()
-      }];
-      subjects = sampleSubjects;
-      saveUsers();
-      saveSubjects();
-      renderAdminDashboard();
-      showToast('All data has been reset!');
-    }
-  }
-}
-
-function approveUser(id) {
-  const user = users.find(u => u.id === id);
-  if (user) {
-    user.status = 'approved';
-    saveUsers();
-    renderAdminDashboard();
-    showToast(`✅ ${user.name} has been approved! They can now login.`);
-    if (Notification.permission === 'granted') {
-      new Notification('Student Approved', { body: `${user.name} can now access the LMS.` });
-    }
-  }
-}
-
-function rejectUser(id) {
-  const user = users.find(u => u.id === id);
-  if (user && confirm(`Reject ${user.name}?`)) {
-    users = users.filter(u => u.id !== id);
-    saveUsers();
-    renderAdminDashboard();
-    showToast(`❌ ${user.name} has been rejected.`);
-  }
-}
-
-function deleteUser(id) {
-  if (confirm('Delete this user permanently?')) {
-    users = users.filter(u => u.id !== id);
-    saveUsers();
-    renderAdminDashboard();
-    showToast('User deleted');
-  }
-}
-
-function showAddSubjectModal() {
-  const modal = document.createElement('div'); modal.className = 'modal active';
-  modal.innerHTML = `<div class="modal-content"><h3>➕ Add New Subject</h3><div class="input-group"><label>Subject Name</label><input id="subName" placeholder="e.g., History"></div><div class="input-group"><label>Passing Score (%)</label><input id="subPassing" value="60" type="number"></div><div class="input-group"><label>Time Limit (minutes)</label><input id="subTime" value="5" type="number"></div><div class="action-buttons"><button class="btn btn-primary" onclick="saveNewSubject()">Create Subject</button><button class="btn btn-outline" onclick="closeModal()">Cancel</button></div></div>`;
-  document.body.appendChild(modal);
-}
-
-function saveNewSubject() {
-  const name = document.getElementById('subName')?.value;
-  if (!name) { showToast('Enter subject name', true); return; }
-  subjects.push({
-    id: Date.now(),
-    name: name,
-    passingScore: parseInt(document.getElementById('subPassing').value) || 60,
-    timeLimit: (parseInt(document.getElementById('subTime').value) || 5) * 60,
-    questions: []
-  });
-  saveSubjects();
-  closeModal();
-  renderAdminDashboard();
-  showToast(`Subject "${name}" added!`);
-}
-
-function editSubject(id) {
-  const sub = subjects.find(s => s.id === id);
-  const modal = document.createElement('div'); modal.className = 'modal active';
-  modal.innerHTML = `<div class="modal-content"><h3>✏️ Edit ${sub.name}</h3><div class="input-group"><label>Questions (JSON format)</label><textarea id="questionsJson" rows="12" style="width:100%; font-family:monospace;">${JSON.stringify(sub.questions, null, 2)}</textarea></div><div class="input-group"><label>Passing Score</label><input id="editPassing" value="${sub.passingScore}" type="number"></div><div class="input-group"><label>Time Limit (minutes)</label><input id="editTimeLimit" value="${Math.floor(sub.timeLimit / 60)}" type="number"></div><div class="action-buttons"><button class="btn btn-primary" onclick="saveEditSubject(${id})">Save Changes</button><button class="btn btn-outline" onclick="closeModal()">Cancel</button></div></div>`;
-  document.body.appendChild(modal);
-}
-
-function saveEditSubject(id) {
-  try {
-    const newQuestions = JSON.parse(document.getElementById('questionsJson').value);
-    const newPassing = parseInt(document.getElementById('editPassing').value);
-    const newTimeLimit = parseInt(document.getElementById('editTimeLimit').value) * 60;
-    const sub = subjects.find(s => s.id === id);
-    if (sub) {
-      sub.questions = newQuestions;
-      sub.passingScore = newPassing;
-      sub.timeLimit = newTimeLimit;
-      saveSubjects();
-      closeModal();
-      renderAdminDashboard();
-      showToast('Subject updated!');
-    }
-  } catch (err) {
-    showToast('Invalid JSON format', true);
-  }
-}
-
-function deleteSubject(id) {
-  if (confirm('Delete this subject? All questions will be lost.')) {
-    subjects = subjects.filter(s => s.id !== id);
-    saveSubjects();
-    renderAdminDashboard();
-    showToast('Subject deleted');
-  }
-}
-
-function closeModal() { document.querySelector('.modal')?.remove(); }
-
-// ============================================
-// INITIALIZE APP
-// ============================================
-
-if (currentUser) {
-  if (currentUser.role === 'admin') {
-    startAutoSync();
-    renderAdminDashboard();
-  } else if (currentUser.status === 'approved') {
-    renderStudentDashboard();
-  } else {
-    renderAuthScreen();
-  }
-} else {
-  renderAuthScreen();
-}
-
-// Check for pending notifications on load
-if (Notification.permission !== 'granted' && currentUser?.role === 'admin') {
-  setTimeout(() => {
-    if (confirm('🔔 Enable notifications to get alerts when students register?')) {
-      enableNotifications();
-    }
-  }, 2000);
-}
-</script>
-</body>
-</html>
+        ${pending.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${new Date(u.registeredAt).toLocaleString()}</td><td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button><button class="icon-btn" style="background:#f44336;color:white;" onclick="rejectUser(${u.id})">❌ Reject</button>
