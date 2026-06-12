@@ -70,7 +70,7 @@
 // ============================================
 // CONFIGURATION - REPLACE WITH YOUR GOOGLE SCRIPT URL
 // ============================================
-const API_URL = "https://script.google.com/macros/s/AKfycbypsktwUZ7QF-lTIUMepYC7wfBJL3xd34P_EzD5VpXU8khAdzaYAVkUoAxa5Gf4L5ElwA/exec"; // 👈 PASTE YOUR URL HERE!
+const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // 👈 PASTE YOUR URL HERE!
 
 let currentUser = null;
 let users = [];
@@ -419,4 +419,113 @@ function renderAdminContent() {
     content.innerHTML = `
       <h3>⏳ Pending Approvals <span style="background:#ff9800; padding:2px 8px; border-radius:20px; font-size:12px;">${pending.length} waiting</span></h3>
       <div class="users-table"><table><thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Action</th></tr></thead><tbody>
-        ${pending.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${new Date(u.registeredAt).toLocaleString()}</td><td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button><button class="icon-btn" style="background:#f44336;color:white;" onclick="rejectUser(${u.id})">❌ Reject</button>
+        ${pending.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${new Date(u.registeredAt).toLocaleString()}</td><td><button class="icon-btn" style="background:#4caf50;color:white;" onclick="approveUser(${u.id})">✅ Approve</button><button class="icon-btn" style="background:#f44336;color:white;" onclick="rejectUser(${u.id})">❌ Reject</button></td></tr>`).join('')}
+        ${pending.length === 0 ? '<tr><td colspan="4" style="text-align:center;">✅ No pending approvals</td>' : ''}
+      </tbody></table></div>
+      <h3 style="margin-top:24px;">✅ Approved Students (${approved.length})</h3>
+      <div class="users-table"><table><thead><tr><th>Name</th><th>Email</th><th>Tests</th><th>Points</th><th>Avg Score</th></thead><tbody>
+        ${approved.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.results?.length || 0}</td><td>${u.points || 0}</td><td>${Math.round((u.results?.reduce((s,r)=>s+r.score,0) || 0) / (u.results?.length || 1))}%</td></tr>`).join('')}
+      </tbody></table></div>
+    `;
+  } else if (adminActiveTab === 'subjects') {
+    content.innerHTML = `
+      <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3>📚 Subjects & Quizzes</h3><button class="btn btn-primary" onclick="showAddSubjectModal()">+ Add Subject</button></div>
+      <div class="subjects-grid">${subjects.map(s => `<div class="subject-card"><div class="subject-name">📘 ${s.name}</div><div>${s.questions.length} questions</div><div>🎯 Pass: ${s.passingScore}% | ⏱️ ${Math.floor(s.timeLimit/60)} min</div></div>`).join('')}</div>
+    `;
+  }
+}
+
+async function approveUser(id) {
+  const user = users.find(u => u.id === id);
+  if (user) {
+    user.status = 'approved';
+    await updateUserInCloud(user);
+    await fetchFromCloud();
+    renderAdminDashboard();
+    showToast(`✅ ${user.name} has been approved! They can now login from any device.`);
+  }
+}
+
+async function rejectUser(id) {
+  if (confirm('Reject this user?')) {
+    users = users.filter(u => u.id !== id);
+    await updateUserInCloud({ id, status: 'rejected' });
+    await fetchFromCloud();
+    renderAdminDashboard();
+    showToast('User rejected');
+  }
+}
+
+function showAddSubjectModal() {
+  const modal = document.createElement('div'); modal.className = 'modal active';
+  modal.innerHTML = `<div class="modal-content"><h3>➕ Add New Subject</h3><div class="input-group"><label>Subject Name</label><input id="subName" placeholder="e.g., History"></div><div class="input-group"><label>Passing Score (%)</label><input id="subPassing" value="60" type="number"></div><div class="input-group"><label>Time Limit (minutes)</label><input id="subTime" value="5" type="number"></div><div class="action-buttons"><button class="btn btn-primary" onclick="saveNewSubject()">Create Subject</button><button class="btn btn-outline" onclick="closeModal()">Cancel</button></div></div>`;
+  document.body.appendChild(modal);
+}
+
+async function saveNewSubject() {
+  const name = document.getElementById('subName')?.value;
+  if (!name) { showToast('Enter subject name', true); return; }
+  
+  const newSubject = {
+    id: Date.now(),
+    name: name,
+    description: "",
+    passingScore: parseInt(document.getElementById('subPassing').value) || 60,
+    timeLimit: (parseInt(document.getElementById('subTime').value) || 5) * 60,
+    questions: []
+  };
+  
+  subjects.push(newSubject);
+  await updateSubjectInCloud(newSubject);
+  closeModal();
+  renderAdminDashboard();
+  showToast(`Subject "${name}" added!`);
+}
+
+async function updateSubjectInCloud(subject) {
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: "addSubject", ...subject })
+    });
+  } catch (err) { console.error(err); }
+}
+
+function closeModal() { document.querySelector('.modal')?.remove(); }
+
+// Auto-refresh for admin
+let refreshInterval = null;
+
+function startAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(async () => {
+    if (currentUser?.role === 'admin') {
+      const oldPending = users.filter(u => u.status === 'pending').length;
+      await fetchFromCloud();
+      const newPending = users.filter(u => u.status === 'pending').length;
+      if (newPending > oldPending && document.getElementById('adminContent')) {
+        renderAdminContent();
+        showToast(`🔔 ${newPending - oldPending} new student(s) registered!`);
+      } else if (document.getElementById('adminContent')) {
+        renderAdminContent();
+      }
+    }
+  }, 10000);
+}
+
+// Initialize
+if (sessionStorage.getItem('lms_current_user')) {
+  currentUser = JSON.parse(sessionStorage.getItem('lms_current_user'));
+  if (currentUser.role === 'admin') {
+    startAutoRefresh();
+    renderAdminDashboard();
+  } else {
+    renderStudentDashboard();
+  }
+} else {
+  renderAuthScreen();
+}
+</script>
+</body>
+</html>
