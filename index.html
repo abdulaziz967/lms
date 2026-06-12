@@ -319,7 +319,7 @@ async function adminLogin() {
   const admin = users.find(u => u.email === email && u.password === password && u.role === 'admin');
   
   if (!admin) {
-    showToast('Invalid admin credentials. Use admin@lms.com / admin123', true);
+    showToast('Invalid admin credentials. Use admin@lms.com / admin', true);
     return;
   }
   
